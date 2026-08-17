@@ -140,7 +140,36 @@ SELECT CONVERT(nvarchar(40), CONNECTIONPROPERTY('auth_scheme'));
 
 Явный `CONVERT` обязателен для совместимости FreeTDS/pyodbc: без него результат `sql_variant` может вызвать `HY091 Descriptor type out of range`.
 
-### 5. Создание keytab
+### 6. Подготовка SQL SPN
+
+Приложение запрашивает точный SPN:
+```text
+MSSQLSvc/lime.matrix.com:1433
+```
+
+Он должен принадлежать фактической учётной записи службы SQL Server либо доменной учётной записи компьютера SQL-хоста. Нельзя назначать этот SQL SPN клиентской учётке `srv_dockerapp-kerberos`.
+
+Проверка:
+```powershell
+setspn -Q MSSQLSvc/lime.matrix.com:1433
+setspn -X
+```
+
+Если SPN отсутствует, сначала определить фактическую SQL service account, затем зарегистрировать:
+```powershell
+$SqlServiceIdentity = 'MATRIX\ФАКТИЧЕСКАЯ_УЧЕТКА_СЛУЖБЫ_SQL'
+setspn -L $SqlServiceIdentity
+setspn -S MSSQLSvc/lime.matrix.com:1433 $SqlServiceIdentity
+```
+
+Откат только что добавленного SPN:
+```powershell
+setspn -D MSSQLSvc/lime.matrix.com:1433 $SqlServiceIdentity
+```
+
+Если SQL Server работает от `LocalSystem`, `NetworkService` или `NT SERVICE\...`, SPN обычно регистрируется на computer account вида `MATRIX\ИМЯ_SQL_ХОСТА$`. Перед изменением обязательно проверить существующие SPN.
+
+### 6. Создание keytab
 
 **Зачем нужен keytab?**
 
@@ -189,7 +218,7 @@ ktpass /out C:\Temp\srv_dockerapp-kerberos.keytab `
 
 Не запускать `ktpass` повторно без необходимости. Изменение пароля учётки повышает KVNO и делает старый keytab недействительным.
 
-### 6. Разместить keytab на Docker-хосте
+### 7. Разместить keytab на Docker-хосте
 Копируем `srv_dockerapp-kerberos.keytab` на Docker-хост в папку `secrets`:
 ```bash
 ./secrets/srv_dockerapp-kerberos.keytab
@@ -213,7 +242,7 @@ services:
       - "./secrets/srv_dockerapp-kerberos.keytab:/run/secrets/app.keytab:ro"
 ```
 
-### 7. Запуск с SQL-аутентификацией
+### 8. Запуск с SQL-аутентификацией
 Создать `.env` в каталоге `dockerapp-kerberos-auth-mssql`:
 
 ```dotenv
@@ -268,7 +297,7 @@ curl -sS http://127.0.0.1:8888/api/health
 {"api":true,"auth_scheme":"SQL","database":true,"database_name":"SysAdminsTestDB","mode":"sql","status":"ok"}
 ```
 
-### 8. Переключение на Kerberos
+### 9. Переключение на Kerberos
 Сначала остановить SQL-вариант:
 ```bash
 docker compose -f docker-compose.yml down
@@ -308,7 +337,7 @@ curl -sS http://127.0.0.1:8888/api/health
 {"api":true,"auth_scheme":"KERBEROS","database":true,"database_name":"SysAdminsTestDB","mode":"kerberos","status":"ok"}
 ```
 
-### 9. Проверка Kerberos tickets
+### 10. Проверка Kerberos tickets
 После SQL-запроса выполнить:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.kerberos.yml exec -T app klist
@@ -333,7 +362,7 @@ Valid starting     Expires            Service principal
 
 `/api/health` со значением `auth_scheme=KERBEROS` является окончательным подтверждением со стороны SQL Server.
 
-### 10. Возврат к SQL-аутентификации
+### 11. Возврат к SQL-аутентификации
 Остановить Kerberos-конфигурацию:
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.kerberos.yml down
@@ -348,7 +377,7 @@ curl -sS http://127.0.0.1:8888/api/health
 
 Ожидается `mode=sql` и `auth_scheme=SQL`.
 
-### 11. Проверка REST API и CRUD
+### 12. Проверка REST API и CRUD
 Health:
 ```bash
 curl -sS http://127.0.0.1:8888/api/health
@@ -377,8 +406,8 @@ curl -sS -X DELETE http://127.0.0.1:8888/api/items/ID
 
 Вместо `ID` указать идентификатор временной записи. После теста запись должна быть удалена.
 
-### 12. Диагностика
-#### 12.1. Состояние контейнера
+### 13. Диагностика
+#### 13.1. Состояние контейнера
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.kerberos.yml ps -a
@@ -386,7 +415,7 @@ docker compose -f docker-compose.yml -f docker-compose.kerberos.yml ps -a
 docker compose -f docker-compose.yml -f docker-compose.kerberos.yml logs --tail=200 app
 ```
 
-#### 12.2. DNS, время и TCP из контейнера
+#### 13.2. DNS, время и TCP из контейнера
 ```bash
 docker compose \
   -f docker-compose.yml \
@@ -405,7 +434,7 @@ docker compose \
   "import socket; socket.create_connection(('lime.matrix.com',1433),5).close(); print('TCP/1433 OK')"
 ```
 
-#### 12.3. Подробный Kerberos trace
+#### 13.3. Подробный Kerberos trace
 Запустить одноразовый контейнер, не вмешиваясь в работающий:
 
 ```bash
@@ -419,14 +448,14 @@ docker compose \
 
 Entrypoint сначала выполнит `kinit`, а `KRB5_TRACE` покажет поиск KDC, используемый enctype и ошибки pre-authentication.
 
-#### 12.4. Проверка SPN из AD
+#### 13.4. Проверка SPN из AD
 ```powershell
 setspn -Q MSSQLSvc/lime.matrix.com:1433
 setspn -X
 ```
 SPN должен быть уникальным и принадлежать фактической SQL service account/computer account.
 
-#### 12.5. Типовые ошибки
+#### 13.5. Типовые ошибки
 
 | Ошибка | Вероятная причина | Проверка/исправление |
 |---|---|---|
@@ -442,7 +471,7 @@ SPN должен быть уникальным и принадлежать фа�
 | `auth_scheme=NTLM` | Kerberos не использован | проверить точный FQDN/SPN, не подключаться по IP |
 | `auth_scheme=SQL` в Kerberos-режиме | запущен только основной Compose или остались SQL credentials | проверить оба `-f`, `DB_AUTH_MODE`, пересоздать контейнер |
 
-#### 12.6. Ticket lifetime
+#### 13.6. Ticket lifetime
 
 Entrypoint выполняет `kinit` один раз при старте. После истечения TGT новые SQL-соединения могут перестать открываться. Для тестовой демонстрации можно получить новый билет перезапуском контейнера:
 
@@ -452,7 +481,7 @@ docker compose -f docker-compose.yml -f docker-compose.kerberos.yml restart app
 
 Для длительной эксплуатации нужен отдельный механизм renewal/re-kinit и мониторинг срока билета.
 
-### 13. Unit-тесты — опционально
+### 14. Unit-тесты — опционально
 Unit-тесты не требуют отдельно запущенного приложения и реального SQL Server: Flask `test_client` вызывает API в памяти, а SQL-соединения подменяются mock-объектами.
 
 Запуск через уже собранный образ:
@@ -497,7 +526,7 @@ OK
 
 Unit-тесты проверяют код и REST API изолированно. Они не доказывают доступность сети, SQL permissions, SPN или Kerberos. Для этого обязательны runtime-проверки `/api/health`, `klist` и живой CRUD.
 
-### 14. Критерии успешной демонстрации
+### 15. Критерии успешной демонстрации
 - контейнер запущен через Gunicorn;
 - SQL-режим возвращает `mode=sql`, `auth_scheme=SQL`;
 - Kerberos-режим не содержит SQL username/password в окружении контейнера;
@@ -507,7 +536,7 @@ Unit-тесты проверяют код и REST API изолированно. 
 - после теста временная запись удалена;
 - unit-тесты проходят, но рассматриваются отдельно от интеграционной проверки.
 
-### 15. Официальные материалы
+### 16. Официальные материалы
 - [Microsoft: ktpass](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ktpass)
 - [Microsoft: регистрация SQL Server SPN](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/register-a-service-principal-name-for-kerberos-connections)
 - [Microsoft: CREATE LOGIN](https://learn.microsoft.com/en-us/sql/relational-databases/security/authentication-access/create-a-login)
