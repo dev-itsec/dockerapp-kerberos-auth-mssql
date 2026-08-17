@@ -1,0 +1,12 @@
+services:
+  app:
+    environment:
+      DB_AUTH_MODE: kerberos
+      DB_USER: ""
+      DB_PASSWORD: ""
+      KRB5_PRINCIPAL: "${KRB5_PRINCIPAL:-srv_dockerapp-kerberos@MATRIX.COM}"
+      KRB5_REALM: "${KRB5_REALM:-MATRIX.COM}"
+      KRB5_KEYTAB: /run/secrets/app.keytab
+      KRB5CCNAME: FILE:/tmp/krb5cc_app
+    volumes:
+      - "${KRB5_KEYTAB_PATH:-./secrets/srv_dockerapp-kerberos.keytab}:/run/secrets/app.keytab:ro"
