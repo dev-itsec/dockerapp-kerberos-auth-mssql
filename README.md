@@ -29,6 +29,7 @@ Microsoft SQL Server
 | База | `SysAdminsTestDB` |
 | Таблица | `dbo.DockerKerberosDemo` |
 | SQL login | `srv_dockerapp-sql` |
+| Домен AD | `MATRIX.COM` |
 | Доменная учётка | `MATRIX\srv_dockerapp-kerberos` |
 | Kerberos principal | `srv_dockerapp-kerberos@MATRIX.COM` |
 | SQL service principal | `MSSQLSvc/lime.matrix.com:1433` |
