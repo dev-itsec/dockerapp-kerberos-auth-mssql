@@ -1,13 +1,12 @@
 ## Docker-приложение вне домена: подключение к Microsoft SQL Server через SQL Login и Kerberos
 
-**Цель проекта**: пошаговое развёртывание тестового приложения `dockerapp-kerberos-auth-mssql`  
-**Окружение**: Ubuntu-контейнер на Docker-хосте вне домена `MATRIX.COM`, Microsoft SQL Server в домене.
-
 > [!NOTE]
 > **Обновление от 2026-08-18: Добавлено автоматическое обновление Kerberos-билетов.**  
 > В Kerberos-режим добавлен `k5start`: он запускает Gunicorn под своим управлением, контролирует срок действия TGT и получает новый билет из keytab до истечения текущего. 
-
 > Также добавлен `Docker healthcheck`, который проверяет действующий Kerberos credential cache командой `klist -s`, доступность REST API и реальное подключение приложения к Microsoft SQL Server через `/api/health`.
+
+**Цель проекта**: пошаговое развёртывание тестового приложения `dockerapp-kerberos-auth-mssql`  
+**Окружение**: Ubuntu-контейнер на Docker-хосте вне домена `MATRIX.COM`, Microsoft SQL Server в домене.
 
 ### 1. Что демонстрирует стенд
 Приложение в Docker-контейнере подключается к одной базе Microsoft SQL Server в двух режимах:
