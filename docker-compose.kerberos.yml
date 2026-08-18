@@ -4,9 +4,25 @@ services:
       DB_AUTH_MODE: kerberos
       DB_USER: ""
       DB_PASSWORD: ""
+
       KRB5_PRINCIPAL: "${KRB5_PRINCIPAL:-srv_dockerapp-kerberos@MATRIX.COM}"
       KRB5_REALM: "${KRB5_REALM:-MATRIX.COM}"
       KRB5_KEYTAB: /run/secrets/app.keytab
       KRB5CCNAME: FILE:/tmp/krb5cc_app
+
+      KRB5_CHECK_INTERVAL_MINUTES: "${KRB5_CHECK_INTERVAL_MINUTES:-5}"
+      KRB5_TICKET_LIFETIME: "${KRB5_TICKET_LIFETIME:-10h}"
+
     volumes:
-      - "${KRB5_KEYTAB_PATH:-./secrets/srv_dockerapp-kerberos.keytab}:/run/secrets/app.keytab:ro"
+      - "${KRB5_KEYTAB_PATH:-./secrets/srv_testapp-ad-mssql.keytab}:/run/secrets/app.keytab:ro"
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "klist -s && /opt/venv/bin/python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/health', timeout=5)\""
+        ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
