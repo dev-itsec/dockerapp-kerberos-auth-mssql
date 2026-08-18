@@ -436,8 +436,8 @@ docker compose \
 ```
 
 #### 13.3. Подробный Kerberos trace
-Запустить одноразовый контейнер, не вмешиваясь в работающий:
 
+Запустить одноразовый контейнер, не вмешиваясь в работающий:
 ```bash
 docker compose \
   -f docker-compose.yml \
@@ -475,12 +475,28 @@ SPN должен быть уникальным и принадлежать фа�
 #### 13.6. Ticket lifetime
 
 Entrypoint выполняет `kinit` один раз при старте. После истечения TGT новые SQL-соединения могут перестать открываться. Для тестовой демонстрации можно получить новый билет перезапуском контейнера:
-
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.kerberos.yml restart app
 ```
 
-Для длительной эксплуатации нужен отдельный механизм renewal/re-kinit и мониторинг срока билета.
+Разово получить новый TGT из keytab без перезапуска контейнера:
+```bash
+docker compose \
+  -f docker-compose.yml \
+  -f docker-compose.kerberos.yml \
+  exec -T app \
+  sh -lc 'kinit -kt "$KRB5_KEYTAB" "$KRB5_PRINCIPAL" && klist'
+```
+`kinit` перезапишет credential cache `/tmp/krb5cc_app` новым TGT. После этого вызовите приложение, чтобы оно получило новый билет SQL Server.
+
+Перезапуск Gunicorn не требуется: FreeTDS использует обновлённый cache-файл при следующем подключении к SQL Server. Сразу после `kinit` билет `MSSQLSvc/...` может исчезнуть — это нормально, он будет запрошен заново при обращении к `/api/health`.
+
+Проверка Kerberos tickets:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.kerberos.yml exec -T app klist
+```
+
+Для длительной эксплуатации нужен отдельный механизм **renewal/re-kinit** и мониторинг срока билета.
 
 ### 14. Unit-тесты — опционально
 Unit-тесты не требуют отдельно запущенного приложения и реального SQL Server: Flask `test_client` вызывает API в памяти, а SQL-соединения подменяются mock-объектами.
