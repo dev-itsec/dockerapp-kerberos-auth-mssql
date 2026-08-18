@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **Обновление от 2026-08-18: Добавлено автоматическое обновление Kerberos-билетов.**  
-> В Kerberos-режим добавлен `k5start`: он запускает Gunicorn под своим управлением, контролирует срок действия TGT и получает новый билет из keytab до истечения текущего.   
+> В Kerberos-режим добавлен `k5start`: он запускает Gunicorn под своим управлением, контролирует срок действия TGT и при необходимости получает новый билет у контроллера домена с помощью keytab.
 > Также добавлен `Docker healthcheck`, который проверяет действующий Kerberos credential cache командой `klist -s`, доступность REST API и реальное подключение приложения к Microsoft SQL Server через `/api/health`.
 
 **Цель проекта**: пошаговое развёртывание тестового приложения `dockerapp-kerberos-auth-mssql`  
@@ -186,12 +186,12 @@ Keytab содержит Kerberos principal и долгосрочный крип�
 При старте контейнера происходит следующая последовательность:
 ```text
 keytab, смонтированный read-only
-        ↓
-kinit -kt получает TGT для srv_dockerapp-kerberos@MATRIX.COM
+        ↓ 
+kinit -kt получает TGT для srv_dockerapp-kerberos@MATRIX.COM от KDC
         ↓
 TGT сохраняется в FILE:/tmp/krb5cc_app
         ↓
-FreeTDS запрашивает service ticket для MSSQLSvc/lime.matrix.com:1433
+FreeTDS запрашивает service ticket для MSSQLSvc/lime.matrix.com:1433 у KDC
         ↓
 SQL Server принимает Kerberos identity MATRIX\srv_dockerapp-kerberos
 ```
