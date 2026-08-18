@@ -14,7 +14,7 @@ services:
       KRB5_TICKET_LIFETIME: "${KRB5_TICKET_LIFETIME:-10h}"
 
     volumes:
-      - "${KRB5_KEYTAB_PATH:-./secrets/srv_testapp-ad-mssql.keytab}:/run/secrets/app.keytab:ro"
+      - "${KRB5_KEYTAB_PATH:-./secrets/srv_dockerapp-kerberos.keytab}:/run/secrets/app.keytab:ro"
 
     healthcheck:
       test:
