@@ -141,7 +141,7 @@ SELECT CONVERT(nvarchar(40), CONNECTIONPROPERTY('auth_scheme'));
 
 Явный `CONVERT` обязателен для совместимости FreeTDS/pyodbc: без него результат `sql_variant` может вызвать `HY091 Descriptor type out of range`.
 
-### 6. Подготовка SQL SPN
+### 5. Подготовка SQL SPN
 
 Приложение запрашивает точный SPN:
 ```text
