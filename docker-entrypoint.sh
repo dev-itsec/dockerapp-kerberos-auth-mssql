@@ -29,7 +29,7 @@ if [ "${DB_AUTH_MODE:-sql}" = "kerberos" ]; then
     fi
 
     # k5start становится PID 1 и запускает Gunicorn дочерним процессом.
-    exec k5start \
+    exec k5start -v \
         -f "${KRB5_KEYTAB}" \
         -k "${kerberos_cache}" \
         -K "${KRB5_CHECK_INTERVAL_MINUTES:-5}" \
